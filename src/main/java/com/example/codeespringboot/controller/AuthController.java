@@ -1,0 +1,57 @@
+package com.example.codeespringboot.controller;
+
+import com.example.codeespringboot.dto.LoginDto;
+import com.example.codeespringboot.dto.LoginResponse;
+import com.example.codeespringboot.config.JwtTokenUtil;
+import com.example.codeespringboot.service.MyDatabaseUserDetailsService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/auth")
+@Transactional
+public class AuthController {
+    @Autowired
+    private MyDatabaseUserDetailsService userService;
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
+    @Autowired
+    private AuthenticationManager authenticationManager;
+    //API add student
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginDto loginDto) throws Exception {
+        //check username + password trong db
+        authenticate(loginDto.getUsername(),loginDto.getPassword());
+        // neu co thi generate ma JWT token sau do tra ve response https://www.javainuse.com/spring/boot-jwt
+        //neu khong co thi bao loi
+      final UserDetails userDetail =  userService.loadUserByUsername(loginDto.getUsername());
+      //verify password
+
+        //neu dung thong tin => generate token
+        final String token = jwtTokenUtil.generateToken(userDetail);
+    return ResponseEntity.ok(new LoginResponse(token));
+    }
+
+    private void authenticate(String username, String password) throws Exception {
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+        } catch (DisabledException e) {
+            throw new Exception("USER_DISABLED", e);
+        } catch (BadCredentialsException e) {
+            throw new Exception("INVALID_CREDENTIALS", e);
+        }
+
+    }
+
+
+}
